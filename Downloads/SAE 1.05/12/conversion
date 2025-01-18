@@ -1,0 +1,29 @@
+import re
+
+def lire_fichier_ics(fichier):
+    with open(fichier, 'r') as f:
+        return f.read()
+
+def convertir_evenement_ics_en_csv(contenu):
+    # Extraire les champs
+    uid = re.search(r'UID:(.+)', contenu)
+    dtstart = re.search(r'DTSTART:(\\d{4})(\\d{2})(\\d{2})T(\\d{2})(\\d{2})', contenu)
+    dtend = re.search(r'DTEND:(\\d{4})(\\d{2})(\\d{2})T(\\d{2})(\\d{2})', contenu)
+    summary = re.search(r'SUMMARY:(.+)', contenu)
+    location = re.search(r'LOCATION:(.+)', contenu)
+
+    # Format des champs
+    date = f"{dtstart.group(3)}-{dtstart.group(2)}-{dtstart.group(1)}" if dtstart else "vide"
+    heure = f"{dtstart.group(4)}:{dtstart.group(5)}" if dtstart else "vide"
+    duree = "02:00"  # Durée simplifiée
+    modalite = "CM" if summary and "CM" in summary.group(1) else "Autre"
+    salles = location.group(1) if location else "vide"
+    intitule = summary.group(1) if summary else "vide"
+
+    # Retourner le résultat formaté
+    return f"{uid.group(1) if uid else 'vide'};{date};{heure};{duree};{modalite};{intitule};{salles}"
+
+# Exemple d'utilisation
+contenu_ics = lire_fichier_ics("evenement.ics")
+resultat = convertir_evenement_ics_en_csv(contenu_ics)
+print(resultat)
