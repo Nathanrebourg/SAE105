@@ -23,8 +23,60 @@ def load_csv(file_path):
 
 def load_text(file_path):
     try:
-        # Lire le fichier texte en utilisant pandas
-        df = pd.read_csv(file_path, sep='\t', header=None)
+        # Lire le fichier texte ligne par ligne
+        with open(file_path, 'r', encoding='utf-8') as file:
+            lines = file.readlines()
+
+        # Initialiser des listes pour stocker les données
+        data = {
+            "Timestamp": [],
+            "Source": [],
+            "Destination": [],
+            "Flags": [],
+            "Seq": [],
+            "Ack": [],
+            "Win": [],
+            "Options": [],
+            "Length": [],
+            "Data": []
+        }
+
+        # Traiter chaque ligne
+        for line in lines:
+            if line.startswith(" "):
+                # Ajouter les données hexadécimales à la colonne "Data"
+                data["Data"][-1] += line.strip()
+            else:
+                # Extraire les informations de la ligne principale
+                parts = line.split()
+                if len(parts) < 15:
+                    print(f"Ligne ignorée (format incorrect) : {line.strip()}")
+                    continue
+
+                timestamp = parts[0]
+                source = parts[2]
+                destination = parts[4].rstrip(':')
+                flags = parts[6].strip(',')
+                seq = parts[8].strip(',')
+                ack = parts[10].strip(',')
+                win = parts[12].strip(',')
+                options = ' '.join(parts[14:]).strip(',')
+                length = parts[-1]
+
+                # Ajouter les informations aux listes
+                data["Timestamp"].append(timestamp)
+                data["Source"].append(source)
+                data["Destination"].append(destination)
+                data["Flags"].append(flags)
+                data["Seq"].append(seq)
+                data["Ack"].append(ack)
+                data["Win"].append(win)
+                data["Options"].append(options)
+                data["Length"].append(length)
+                data["Data"].append("")
+
+        # Créer un DataFrame à partir des données
+        df = pd.DataFrame(data)
         return df
 
     except Exception as e:
@@ -54,7 +106,7 @@ def generate_html_from_dataframe(df, output_html_path):
         html_content = """
         <html>
         <head>
-            <title>Analyse des Séances</title>
+            <title>Données : </title>
             <style>
                 body {
                     font-family: Arial, sans-serif;
@@ -117,7 +169,7 @@ def generate_html_from_dataframe(df, output_html_path):
         </head>
         <body>
             <div class="container">
-                <h1>Tableau des séances</h1>
+                <h1>Données : </h1>
                 <table>
                     <thead>
                         <tr>
