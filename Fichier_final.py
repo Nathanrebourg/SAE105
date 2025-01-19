@@ -1,37 +1,41 @@
 import pandas as pd
-import os
-
-def detect_file_type(file_path):
-    """Détecte le type de fichier à partir de son extension."""
-    _, file_extension = os.path.splitext(file_path)
-    return file_extension.lower()
 
 def load_data(file_path):
-    """Charge les données à partir d'un fichier CSV, Excel ou JSON."""
-    file_type = detect_file_type(file_path)
     try:
-        if file_type == ".csv":
-            return pd.read_csv(file_path, sep=None, engine='python')  # Détection automatique du séparateur
-        elif file_type in [".xls", ".xlsx"]:
-            return pd.read_excel(file_path)
-        elif file_type == ".json":
-            return pd.read_json(file_path)
-        else:
-            raise ValueError("Type de fichier non supporté : " + file_type)
+        # Lire le fichier CSV en morceaux (chunks) avec low_memory=False
+        chunksize = 10000  # Nombre de lignes par morceau
+        chunks = pd.read_csv(file_path, sep=';', chunksize=chunksize, on_bad_lines='skip', low_memory=False)
+
+        # Initialiser une liste pour stocker les morceaux
+        data_list = []
+
+        # Traiter chaque morceau
+        for chunk in chunks:
+            data_list.append(chunk)
+
+        # Combiner tous les morceaux en un seul DataFrame
+        df = pd.concat(data_list, ignore_index=True)
+        return df
+
     except Exception as e:
         print(f"Erreur lors du chargement du fichier : {e}")
         return None
 
-def generate_html_from_dataframe(df, output_file="output.html"):
-    """Génère une page HTML interactive à partir d'un DataFrame."""
+def save_data(df, output_file):
+    """Génère un fichier CSV à partir d'un DataFrame."""
     try:
-        html_content = f"""
-        <!DOCTYPE html>
-        <html lang="en">
+        df.to_csv(output_file, index=False, sep=';', encoding='utf-8')
+        print(f"Fichier CSV généré : {output_file}")
+    except Exception as e:
+        print(f"Erreur lors de la génération du CSV : {e}")
+
+def generate_html_from_dataframe(df, output_html_path):
+    """Génère une page HTML à partir d'un DataFrame."""
+    try:
+        html_content = """
+        <html>
         <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Tableau des Données</title>
+            <title>Analyse des Séances</title>
             <style>
                 table {{
                     width: 100%;
@@ -51,25 +55,46 @@ def generate_html_from_dataframe(df, output_file="output.html"):
             </style>
         </head>
         <body>
-            <h1>Tableau des Données</h1>
-            {df.to_html(index=False, escape=False)}
+            <h1>Tableau des séances</h1>
+            <table>
+                <tr>
+        """
+        # Ajouter les en-têtes de colonnes
+        for column in df.columns:
+            html_content += f"<th>{column}</th>"
+        html_content += "</tr>"
+
+        # Ajouter les données
+        for _, row in df.iterrows():
+            html_content += "<tr>"
+            for cell in row:
+                html_content += f"<td>{cell}</td>"
+            html_content += "</tr>"
+        
+        html_content += """
+            </table>
         </body>
         </html>
         """
-        with open(output_file, "w", encoding="utf-8") as f:
-            f.write(html_content)
-        print(f"Fichier HTML généré : {output_file}")
+
+        with open(output_html_path, 'w', encoding='utf-8') as file:
+            file.write(html_content)
+        print(f"Fichier HTML généré : {output_html_path}")
     except Exception as e:
-        print(f"Erreur lors de la génération de la page HTML : {e}")
+        print(f"Erreur lors de la génération du HTML : {e}")
 
 def main():
-    file_path = input("Entrez le chemin du fichier à traiter : ").strip()
+    file_path = input("Entrez le chemin du fichier CSV à traiter : ").strip()
 
     # Charger les données
     df = load_data(file_path)
     if df is None:
         print("Impossible de traiter le fichier. Assurez-vous qu'il est valide et supporté.")
         return
+
+    # Sauvegarder les données traitées
+    output_file = "output.csv"
+    save_data(df, output_file)
 
     # Chemins des fichiers de sortie
     html_file = "output.html"
