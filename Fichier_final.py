@@ -1,6 +1,6 @@
 import pandas as pd
 
-def load_data(file_path):
+def load_csv(file_path):
     try:
         # Lire le fichier CSV en morceaux (chunks) avec low_memory=False
         chunksize = 10000  # Nombre de lignes par morceau
@@ -18,7 +18,26 @@ def load_data(file_path):
         return df
 
     except Exception as e:
-        print(f"Erreur lors du chargement du fichier : {e}")
+        print(f"Erreur lors du chargement du fichier CSV : {e}")
+        return None
+
+def load_text(file_path):
+    try:
+        # Lire le fichier texte en utilisant pandas
+        df = pd.read_csv(file_path, sep='\t', header=None)
+        return df
+
+    except Exception as e:
+        print(f"Erreur lors du chargement du fichier texte : {e}")
+        return None
+
+def load_data(file_path):
+    if file_path.endswith('.csv'):
+        return load_csv(file_path)
+    elif file_path.endswith('.txt'):
+        return load_text(file_path)
+    else:
+        print("Format de fichier non supporté. Veuillez fournir un fichier CSV ou texte.")
         return None
 
 def save_data(df, output_file):
@@ -130,7 +149,7 @@ def generate_html_from_dataframe(df, output_html_path):
         print(f"Erreur lors de la génération du HTML : {e}")
 
 def main():
-    file_path = input("Entrez le chemin du fichier CSV à traiter : ").strip()
+    file_path = input("Entrez le chemin du fichier CSV ou texte à traiter : ").strip()
 
     # Charger les données
     df = load_data(file_path)
@@ -142,7 +161,7 @@ def main():
     output_file = "output.csv"
     save_data(df, output_file)
 
-    # Chemins des fichiers de sortie
+    # Chemin du fichier de sortie HTML
     html_file = "output.html"
 
     # Génération de la page HTML
