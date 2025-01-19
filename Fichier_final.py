@@ -37,42 +37,88 @@ def generate_html_from_dataframe(df, output_html_path):
         <head>
             <title>Analyse des Séances</title>
             <style>
-                table {{
+                body {
+                    font-family: Arial, sans-serif;
+                    margin: 0;
+                    padding: 0;
+                    background-color: #f4f4f4;
+                }
+                .container {
+                    width: 90%;
+                    margin: auto;
+                    overflow: hidden;
+                }
+                table {
                     width: 100%;
                     border-collapse: collapse;
-                }}
-                th, td {{
-                    border: 1px solid #ddd;
-                    padding: 8px;
-                }}
-                th {{
-                    background-color: #f2f2f2;
+                    margin: 20px 0;
+                    font-size: 18px;
                     text-align: left;
-                }}
-                tr:nth-child(even) {{
-                    background-color: #f9f9f9;
-                }}
+                }
+                th, td {
+                    padding: 12px;
+                    border: 1px solid #ddd;
+                }
+                th {
+                    background-color: #4CAF50;
+                    color: white;
+                }
+                tr:nth-child(even) {
+                    background-color: #f2f2f2;
+                }
+                @media (max-width: 600px) {
+                    table, thead, tbody, th, td, tr {
+                        display: block;
+                    }
+                    th {
+                        position: absolute;
+                        top: -9999px;
+                        left: -9999px;
+                    }
+                    tr {
+                        border: 1px solid #ccc;
+                    }
+                    td {
+                        border: none;
+                        border-bottom: 1px solid #eee;
+                        position: relative;
+                        padding-left: 50%;
+                    }
+                    td:before {
+                        content: attr(data-label);
+                        position: absolute;
+                        left: 0;
+                        width: 50%;
+                        padding-left: 15px;
+                        font-weight: bold;
+                        white-space: nowrap;
+                    }
+                }
             </style>
         </head>
         <body>
-            <h1>Tableau des séances</h1>
-            <table>
-                <tr>
+            <div class="container">
+                <h1>Tableau des séances</h1>
+                <table>
+                    <thead>
+                        <tr>
         """
         # Ajouter les en-têtes de colonnes
         for column in df.columns:
             html_content += f"<th>{column}</th>"
-        html_content += "</tr>"
+        html_content += "</tr></thead><tbody>"
 
         # Ajouter les données
         for _, row in df.iterrows():
             html_content += "<tr>"
-            for cell in row:
-                html_content += f"<td>{cell}</td>"
+            for cell, column in zip(row, df.columns):
+                html_content += f"<td data-label='{column}'>{cell}</td>"
             html_content += "</tr>"
         
         html_content += """
-            </table>
+                    </tbody>
+                </table>
+            </div>
         </body>
         </html>
         """
