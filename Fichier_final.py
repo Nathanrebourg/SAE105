@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from flask import Flask, request, render_template
 import os
+import re
 import nltk
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 import spacy
@@ -72,7 +73,7 @@ def generate_html_from_dataframe(df, output_html_path, threats, attacks, errors)
                     border: 1px solid #ddd;
                 }}
                 th {{
-                    background-color: #4CAF50;
+                    background-color: grey;
                     color: white;
                 }}
                 tr:nth-child(even) {{
@@ -118,6 +119,17 @@ def analyze_text(text):
     attacks = []
     errors = []
     explanations = []
+
+    # Extraire les adresses IP et les ports
+    ip_pattern = re.compile(r'\b(?:\d{1,3}\.){3}\d{1,3}\b')
+    port_pattern = re.compile(r'\b\d{1,5}\b')
+    ips = ip_pattern.findall(text)
+    ports = port_pattern.findall(text)
+
+    if ips:
+        explanations.append(f"Adresses IP détectées : {', '.join(ips)}")
+    if ports:
+        explanations.append(f"Ports détectés : {', '.join(ports)}")
 
     for token in doc:
         if token.dep_ == 'neg':
