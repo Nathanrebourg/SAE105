@@ -41,13 +41,13 @@ def generate_graph(df, output_image_path, column_name):
     else:
         print(f"Erreur : La colonne '{column_name}' n'existe pas dans le DataFrame.")
 
-def generate_html_from_dataframe(df, output_html_path, threats, attacks):
+def generate_html_from_dataframe(df, output_html_path, threats, attacks, errors):
     """Génère une page HTML à partir d'un DataFrame."""
     try:
         html_content = f"""
         <html>
         <head>
-            <title>Menaces et Attaques détectées</title>
+            <title>Menaces, Attaques et Erreurs détectées</title>
             <style>
                 body {{
                     font-family: Arial, sans-serif;
@@ -82,18 +82,20 @@ def generate_html_from_dataframe(df, output_html_path, threats, attacks):
         </head>
         <body>
             <div class="container">
-                <h1>Menaces et Attaques détectées</h1>
+                <h1>Menaces, Attaques et Erreurs détectées</h1>
         """
 
-        if threats or attacks:
+        if threats or attacks or errors:
             html_content += "<table><thead><tr><th>Ligne</th><th>Type</th><th>Texte</th><th>Explications</th></tr></thead><tbody>"
             for threat in threats:
                 html_content += f"<tr><td>{threat['ligne']}</td><td>Menace</td><td>{threat['texte']}</td><td>{threat['explications']}</td></tr>"
             for attack in attacks:
                 html_content += f"<tr><td>{attack['ligne']}</td><td>Attaque</td><td>{attack['texte']}</td><td>{attack['explications']}</td></tr>"
+            for error in errors:
+                html_content += f"<tr><td>{error['ligne']}</td><td>Erreur</td><td>{error['texte']}</td><td>{error['explications']}</td></tr>"
             html_content += "</tbody></table>"
         else:
-            html_content += "<p>Aucune menace ou attaque détectée.</p>"
+            html_content += "<p>Aucune menace, attaque ou erreur détectée.</p>"
 
         html_content += """
             </div>
@@ -108,12 +110,13 @@ def generate_html_from_dataframe(df, output_html_path, threats, attacks):
         print(f"Erreur lors de la génération du HTML : {e}")
 
 def analyze_text(text):
-    """Analyse le texte pour détecter des menaces et des attaques."""
+    """Analyse le texte pour détecter des menaces, des attaques et des erreurs."""
     sid = SentimentIntensityAnalyzer()
     sentiment_scores = sid.polarity_scores(text)
     doc = nlp(text)
     threats = []
     attacks = []
+    errors = []
     explanations = []
 
     for token in doc:
@@ -123,8 +126,11 @@ def analyze_text(text):
         if token.dep_ == 'dobj' and token.head.dep_ == 'ROOT':
             attacks.append(token.text)
             explanations.append(f"Le mot '{token.text}' est un objet direct de l'action '{token.head.text}', ce qui peut indiquer une attaque.")
+        if token.dep_ == 'amod':
+            errors.append(token.text)
+            explanations.append(f"Le mot '{token.text}' est un modificateur adjectival, ce qui peut indiquer une erreur.")
 
-    return threats, attacks, explanations
+    return threats, attacks, errors, explanations
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -147,19 +153,23 @@ def main():
         print("Impossible de traiter le fichier. Assurez-vous qu'il est valide et supporté.")
         return
 
-    # Analyser les données pour détecter des menaces et des attaques
+    # Analyser les données pour détecter des menaces, des attaques et des erreurs
     all_threats = []
     all_attacks = []
+    all_errors = []
     for index, row in df.iterrows():
         text = ' '.join(map(str, row.values))
-        threats, attacks, explanations = analyze_text(text)
+        threats, attacks, errors, explanations = analyze_text(text)
         if threats:
             all_threats.append({'ligne': index + 1, 'texte': ', '.join(threats), 'explications': ', '.join(explanations)})
         if attacks:
             all_attacks.append({'ligne': index + 1, 'texte': ', '.join(attacks), 'explications': ', '.join(explanations)})
+        if errors:
+            all_errors.append({'ligne': index + 1, 'texte': ', '.join(errors), 'explications': ', '.join(explanations)})
         print(f"Ligne {index + 1} :")
         print(f"Menaces détectées : {', '.join(threats)}")
         print(f"Attaques détectées : {', '.join(attacks)}")
+        print(f"Erreurs détectées : {', '.join(errors)}")
         print(f"Explications : {', '.join(explanations)}")
 
     # Sauvegarder les données traitées
@@ -170,7 +180,7 @@ def main():
     html_file = "output.html"
 
     # Génération de la page HTML
-    generate_html_from_dataframe(df, html_file, all_threats, all_attacks)
+    generate_html_from_dataframe(df, html_file, all_threats, all_attacks, all_errors)
 
 if __name__ == "__main__":
     main()
