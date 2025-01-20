@@ -1,194 +1,101 @@
 import pandas as pd
+import matplotlib.pyplot as plt
+from flask import Flask, request, render_template
+import os
+import nltk
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+import spacy
 
-def load_csv(file_path):
-    try:
-        # Lire le fichier CSV en morceaux (chunks) avec low_memory=False
-        chunksize = 10000  # Nombre de lignes par morceau
-        chunks = pd.read_csv(file_path, sep=';', chunksize=chunksize, on_bad_lines='skip', low_memory=False)
+nltk.download('vader_lexicon')
+nlp = spacy.load("en_core_web_sm")
 
-        # Initialiser une liste pour stocker les morceaux
-        data_list = []
-
-        # Traiter chaque morceau
-        for chunk in chunks:
-            data_list.append(chunk)
-
-        # Combiner tous les morceaux en un seul DataFrame
-        df = pd.concat(data_list, ignore_index=True)
-        return df
-
-    except Exception as e:
-        print(f"Erreur lors du chargement du fichier CSV : {e}")
-        return None
-
-def load_text(file_path):
-    try:
-        # Lire le fichier texte ligne par ligne
-        with open(file_path, 'r', encoding='utf-8') as file:
-            lines = file.readlines()
-
-        # Initialiser des listes pour stocker les données
-        data = {
-            "Timestamp": [],
-            "Source": [],
-            "Destination": [],
-            "Flags": [],
-            "Seq": [],
-            "Ack": [],
-            "Win": [],
-            "Options": [],
-            "Length": [],
-            "Data": []
-        }
-
-        # Traiter chaque ligne
-        for line in lines:
-            if line.startswith(" "):
-                # Ajouter les données hexadécimales à la colonne "Data"
-                data["Data"][-1] += line.strip()
-            else:
-                # Extraire les informations de la ligne principale
-                parts = line.split()
-                if len(parts) < 15:
-                    print(f"Ligne ignorée (format incorrect) : {line.strip()}")
-                    continue
-
-                timestamp = parts[0]
-                source = parts[2]
-                destination = parts[4].rstrip(':')
-                flags = parts[6].strip(',')
-                seq = parts[8].strip(',')
-                ack = parts[10].strip(',')
-                win = parts[12].strip(',')
-                options = ' '.join(parts[14:]).strip(',')
-                length = parts[-1]
-
-                # Ajouter les informations aux listes
-                data["Timestamp"].append(timestamp)
-                data["Source"].append(source)
-                data["Destination"].append(destination)
-                data["Flags"].append(flags)
-                data["Seq"].append(seq)
-                data["Ack"].append(ack)
-                data["Win"].append(win)
-                data["Options"].append(options)
-                data["Length"].append(length)
-                data["Data"].append("")
-
-        # Créer un DataFrame à partir des données
-        df = pd.DataFrame(data)
-        return df
-
-    except Exception as e:
-        print(f"Erreur lors du chargement du fichier texte : {e}")
-        return None
+app = Flask(__name__)
 
 def load_data(file_path):
-    if file_path.endswith('.csv'):
-        return load_csv(file_path)
-    elif file_path.endswith('.txt'):
-        return load_text(file_path)
-    else:
-        print("Format de fichier non supporté. Veuillez fournir un fichier CSV ou texte.")
+    """Charge les données à partir d'un fichier CSV ou texte."""
+    try:
+        return pd.read_csv(file_path)
+    except Exception as e:
+        print(f"Erreur lors du chargement des données : {e}")
         return None
 
 def save_data(df, output_file):
-    """Génère un fichier CSV à partir d'un DataFrame."""
+    """Sauvegarde les données dans un fichier CSV."""
     try:
-        df.to_csv(output_file, index=False, sep=';', encoding='utf-8')
-        print(f"Fichier CSV généré : {output_file}")
+        df.to_csv(output_file, index=False)
+        print(f"Données sauvegardées dans {output_file}")
     except Exception as e:
-        print(f"Erreur lors de la génération du CSV : {e}")
+        print(f"Erreur lors de la sauvegarde des données : {e}")
 
-def generate_html_from_dataframe(df, output_html_path):
+def generate_graph(df, output_image_path, column_name):
+    """Génère un graphique à partir d'un DataFrame."""
+    if column_name in df.columns:
+        plt.figure(figsize=(10, 6))
+        df[column_name].value_counts().plot(kind='bar')
+        plt.title(f'Graphique des données pour {column_name}')
+        plt.xlabel('Catégories')
+        plt.ylabel('Valeurs')
+        plt.savefig(output_image_path)
+        plt.close()
+        print(f"Graphique généré : {output_image_path}")
+    else:
+        print(f"Erreur : La colonne '{column_name}' n'existe pas dans le DataFrame.")
+
+def generate_html_from_dataframe(df, output_html_path, threats, attacks):
     """Génère une page HTML à partir d'un DataFrame."""
     try:
-        html_content = """
+        html_content = f"""
         <html>
         <head>
-            <title>Données : </title>
+            <title>Menaces et Attaques détectées</title>
             <style>
-                body {
+                body {{
                     font-family: Arial, sans-serif;
                     margin: 0;
                     padding: 0;
                     background-color: #f4f4f4;
-                }
-                .container {
+                }}
+                .container {{
                     width: 90%;
                     margin: auto;
                     overflow: hidden;
-                }
-                table {
+                }}
+                table {{
                     width: 100%;
                     border-collapse: collapse;
                     margin: 20px 0;
                     font-size: 18px;
                     text-align: left;
-                }
-                th, td {
+                }}
+                th, td {{
                     padding: 12px;
                     border: 1px solid #ddd;
-                }
-                th {
+                }}
+                th {{
                     background-color: #4CAF50;
                     color: white;
-                }
-                tr:nth-child(even) {
+                }}
+                tr:nth-child(even) {{
                     background-color: #f2f2f2;
-                }
-                @media (max-width: 600px) {
-                    table, thead, tbody, th, td, tr {
-                        display: block;
-                    }
-                    th {
-                        position: absolute;
-                        top: -9999px;
-                        left: -9999px;
-                    }
-                    tr {
-                        border: 1px solid #ccc;
-                    }
-                    td {
-                        border: none;
-                        border-bottom: 1px solid #eee;
-                        position: relative;
-                        padding-left: 50%;
-                    }
-                    td:before {
-                        content: attr(data-label);
-                        position: absolute;
-                        left: 0;
-                        width: 50%;
-                        padding-left: 15px;
-                        font-weight: bold;
-                        white-space: nowrap;
-                    }
-                }
+                }}
             </style>
         </head>
         <body>
             <div class="container">
-                <h1>Données : </h1>
-                <table>
-                    <thead>
-                        <tr>
+                <h1>Menaces et Attaques détectées</h1>
         """
-        # Ajouter les en-têtes de colonnes
-        for column in df.columns:
-            html_content += f"<th>{column}</th>"
-        html_content += "</tr></thead><tbody>"
 
-        # Ajouter les données
-        for _, row in df.iterrows():
-            html_content += "<tr>"
-            for cell, column in zip(row, df.columns):
-                html_content += f"<td data-label='{column}'>{cell}</td>"
-            html_content += "</tr>"
-        
+        if threats or attacks:
+            html_content += "<table><thead><tr><th>Ligne</th><th>Type</th><th>Texte</th><th>Explications</th></tr></thead><tbody>"
+            for threat in threats:
+                html_content += f"<tr><td>{threat['ligne']}</td><td>Menace</td><td>{threat['texte']}</td><td>{threat['explications']}</td></tr>"
+            for attack in attacks:
+                html_content += f"<tr><td>{attack['ligne']}</td><td>Attaque</td><td>{attack['texte']}</td><td>{attack['explications']}</td></tr>"
+            html_content += "</tbody></table>"
+        else:
+            html_content += "<p>Aucune menace ou attaque détectée.</p>"
+
         html_content += """
-                    </tbody>
-                </table>
             </div>
         </body>
         </html>
@@ -200,6 +107,37 @@ def generate_html_from_dataframe(df, output_html_path):
     except Exception as e:
         print(f"Erreur lors de la génération du HTML : {e}")
 
+def analyze_text(text):
+    """Analyse le texte pour détecter des menaces et des attaques."""
+    sid = SentimentIntensityAnalyzer()
+    sentiment_scores = sid.polarity_scores(text)
+    doc = nlp(text)
+    threats = []
+    attacks = []
+    explanations = []
+
+    for token in doc:
+        if token.dep_ == 'neg':
+            threats.append(token.text)
+            explanations.append(f"Le mot '{token.text}' est une négation, ce qui peut indiquer une menace.")
+        if token.dep_ == 'dobj' and token.head.dep_ == 'ROOT':
+            attacks.append(token.text)
+            explanations.append(f"Le mot '{token.text}' est un objet direct de l'action '{token.head.text}', ce qui peut indiquer une attaque.")
+
+    return threats, attacks, explanations
+
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    if request.method == 'POST':
+        file = request.files['file']
+        column_name = request.form.get('column_name')
+        if file and column_name:
+            df = pd.read_csv(file)
+            output_image_path = os.path.join('static', 'output.png')
+            generate_graph(df, output_image_path, column_name)
+            return render_template('index.html', tables=[df.to_html(classes='data')], titles=df.columns.values, image=output_image_path)
+    return render_template('index.html')
+
 def main():
     file_path = input("Entrez le chemin du fichier CSV ou texte à traiter : ").strip()
 
@@ -209,6 +147,21 @@ def main():
         print("Impossible de traiter le fichier. Assurez-vous qu'il est valide et supporté.")
         return
 
+    # Analyser les données pour détecter des menaces et des attaques
+    all_threats = []
+    all_attacks = []
+    for index, row in df.iterrows():
+        text = ' '.join(map(str, row.values))
+        threats, attacks, explanations = analyze_text(text)
+        if threats:
+            all_threats.append({'ligne': index + 1, 'texte': ', '.join(threats), 'explications': ', '.join(explanations)})
+        if attacks:
+            all_attacks.append({'ligne': index + 1, 'texte': ', '.join(attacks), 'explications': ', '.join(explanations)})
+        print(f"Ligne {index + 1} :")
+        print(f"Menaces détectées : {', '.join(threats)}")
+        print(f"Attaques détectées : {', '.join(attacks)}")
+        print(f"Explications : {', '.join(explanations)}")
+
     # Sauvegarder les données traitées
     output_file = "output.csv"
     save_data(df, output_file)
@@ -217,7 +170,8 @@ def main():
     html_file = "output.html"
 
     # Génération de la page HTML
-    generate_html_from_dataframe(df, html_file)
+    generate_html_from_dataframe(df, html_file, all_threats, all_attacks)
 
 if __name__ == "__main__":
     main()
+    app.run(debug=True)
