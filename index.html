@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analyse des Données</title>
+    <title>Analyseur de Paquets Réseau</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -15,6 +15,17 @@
             width: 90%;
             margin: auto;
             overflow: hidden;
+        }
+        h1 {
+            text-align: center;
+            margin-top: 20px;
+        }
+        form {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .table-container {
+            overflow-x: auto;
         }
         table {
             width: 100%;
@@ -28,7 +39,7 @@
             border: 1px solid #ddd;
         }
         th {
-            background-color: #4CAF50;
+            background-color: grey;
             color: white;
         }
         tr:nth-child(even) {
@@ -38,15 +49,15 @@
 </head>
 <body>
     <div class="container">
-        <h1>Analyse des Données</h1>
-        <form method="post" enctype="multipart/form-data">
-            <input type="file" name="file">
-            <input type="submit" value="Upload">
+        <h1>Analyseur de Paquets Réseau</h1>
+        <form action="/" method="post" enctype="multipart/form-data">
+            <input type="file" name="file" accept=".txt">
+            <button type="submit">Télécharger</button>
         </form>
         {% if tables %}
+        <div class="table-container">
             {{ tables|safe }}
-            <h1>Graphique des données</h1>
-            <img src="{{ image }}" alt="Graphique">
+        </div>
         {% endif %}
     </div>
 </body>
