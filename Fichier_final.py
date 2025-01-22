@@ -53,31 +53,6 @@ def plot_packet_frequency(df, frame):
     canvas.draw()
     canvas.get_tk_widget().pack(expand=True, fill=tk.BOTH)
 
-def generate_pdf_report(df):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-    pdf.cell(200, 10, txt="Network Traffic Analysis Report", ln=True, align='C')
-    pdf.ln(10)
-    pdf.set_font("Arial", size=10)
-    pdf.cell(0, 10, f"Total Packets: {len(df)}", ln=True)
-    pdf.cell(0, 10, f"Unique Source IPs: {df['src'].nunique()}", ln=True)
-    pdf.cell(0, 10, f"Unique Destination IPs: {df['dst'].nunique()}", ln=True)
-    pdf.ln(10)
-    pdf.set_font("Arial", style="B", size=10)
-    pdf.cell(0, 10, "Top 5 Source IPs:", ln=True)
-    pdf.set_font("Arial", size=10)
-    for ip, count in df['src'].value_counts().head().items():
-        pdf.cell(0, 10, f"{ip}: {count}", ln=True)
-    pdf.ln(5)
-    pdf.set_font("Arial", style="B", size=10)
-    pdf.cell(0, 10, "Top 5 Destination IPs:", ln=True)
-    pdf.set_font("Arial", size=10)
-    for ip, count in df['dst'].value_counts().head().items():
-        pdf.cell(0, 10, f"{ip}: {count}", ln=True)
-    report_path = os.path.join(os.path.expanduser('~'), 'network_traffic_analysis_report.pdf')
-    pdf.output(report_path)
-    messagebox.showinfo("PDF Generated", f"Report saved to {report_path}")
 
 
 def plot_ip_traffic_pie_chart(df, frame):
@@ -92,7 +67,16 @@ def plot_ip_traffic_pie_chart(df, frame):
     canvas.draw()
     canvas.get_tk_widget().pack(expand=True, fill=tk.BOTH)
 
+root = tk.Tk()
+root.title("Ma Fenêtre Tkinter")
 
+# Création d'un frame pour le graphique
+frame = ttk.Frame(root)
+frame.pack(expand=True, fill=tk.BOTH)
+
+# Exemple de DataFrame pour les flags TCP
+data = {'flags': ['S', 'A', 'P', 'S', 'F', 'A', 'R', 'S', 'A', 'P']}
+df = pd.DataFrame(data)
 
 def plot_tcp_flags(df, frame):
     """
@@ -318,13 +302,12 @@ def display_dataframe(df):
 
 
 
-    def show_next_plot():
-        # Clear existing widgets in frame_bottom
-        for widget in frame_bottom.winfo_children():
-            widget.destroy()
-        # Switch to the next view
-        current_view[0] = (current_view[0] + 1) % len(views)
-        views[current_view[0]](df, frame_bottom)
+    def show_graph():
+        plot_tcp_flags(df, frame)
+
+    # Ajout d'un troisième bouton pour afficher le graphique
+    button_show_graph = ttk.Button(root, text="Afficher le Graphique", command=show_graph)
+    button_show_graph.pack()
 
 
 
